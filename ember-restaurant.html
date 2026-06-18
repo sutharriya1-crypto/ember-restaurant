@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ember — Open-Flame Dining</title>
+<meta name="description" content="Ember is a live-fire restaurant. Charcoal, craft, and a menu that never touches gas." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Work+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --char:#0b0908;
+    --char-2:#0f0c0a;
+    --soot:#131211;
+    --soot-2:#1c1714;
+    --ash:#2c2620;
+    --ash-soft:#352e27;
+    --ember:#ff5a1f;
+    --ember-2:#ff7a3d;
+    --amber:#ffb347;
+    --bone:#f3ede3;
+    --smoke:#9c948a;
+    --font-display:'Fraunces', serif;
+    --font-body:'Work Sans', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+    --container:1180px;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background:var(--char);
+    color:var(--bone);
+    font-family:var(--font-body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  img{ display:block; max-width:100%; }
+
+  a{ color:inherit; }
+
+  ::selection{ background:var(--ember); color:var(--char); }
+
+  a:focus-visible,
+  button:focus-visible{
+    outline:2px solid var(--ember);
+    outline-offset:4px;
+  }
+
+  .skip-link{
+    position:absolute; left:-999px; top:0;
+    background:var(--ember); color:var(--char);
+    padding:.6rem 1rem; z-index:999; font-family:var(--font-mono);
+  }
+  .skip-link:focus{ left:1rem; top:1rem; }
+
+  /* ---------- grain overlay ---------- */
+  .grain{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    opacity:.05; mix-blend-mode:overlay;
+    background-image:
+      radial-gradient(circle at 20% 30%, #fff 0.5px, transparent 0.5px),
+      radial-gradient(circle at 60% 70%, #fff 0.5px, transparent 0.5px),
+      radial-gradient(circle at 80% 20%, #fff 0.5px, transparent 0.5px);
+    background-size: 3px 3px, 5px 5px, 4px 4px;
+  }
+
+  #emberCanvas{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+  }
+
+  .container{
+    width:100%; max-width:var(--container); margin:0 auto; padding:0 1.75rem;
+  }
+
+  /* ---------- type helpers ---------- */
+  .eyebrow{
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--ember); display:inline-flex; align-items:center; gap:.6rem;
+  }
+  .eyebrow::before{ content:""; width:18px; height:1px; background:var(--ember); display:inline-block; }
+
+  h1,h2,h3{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; color:var(--bone); }
+
+  .section-head{ max-width:640px; margin-bottom:3rem; }
+  .section-head h2{ font-size:2.4rem; margin-top:.9rem; }
+  .section-head p{ color:var(--smoke); margin-top:.9rem; font-size:1.02rem; }
+
+  section{ position:relative; z-index:2; padding:7rem 0; }
+  .bg-char{ background:var(--char); }
+  .bg-soot{ background:var(--soot); }
+
+  /* ---------- divider ---------- */
+  .divider{ position:relative; height:1px; background:var(--ash); width:100%; }
+  .divider span{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:46px; height:3px; background:var(--ember); border-radius:2px;
+  }
+
+  /* ---------- reveal animation ---------- */
+  .reveal{ opacity:0; transform:translateY(28px); transition:opacity .8s ease, transform .8s ease; }
+  .reveal.in-view{ opacity:1; transform:translateY(0); }
+  @media (prefers-reduced-motion: reduce){
+    .reveal{ opacity:1; transform:none; transition:none; }
+    html{ scroll-behavior:auto; }
+  }
+
+  /* ---------- ticket button ---------- */
+  .ticket-btn{
+    position:relative; display:inline-flex; align-items:center; gap:.55rem;
+    padding:1rem 2.3rem; background:var(--ember); color:var(--char);
+    font-family:var(--font-mono); font-size:.78rem; letter-spacing:.14em;
+    text-transform:uppercase; font-weight:600; text-decoration:none;
+    border-radius:2px; border:none; cursor:pointer;
+    transition:transform .25s ease, box-shadow .25s ease, background .25s ease;
+  }
+  .ticket-btn:hover{ transform:translateY(-3px); box-shadow:0 18px 34px rgba(255,90,31,.28); background:var(--ember-2); }
+  .ticket-btn::before, .ticket-btn::after{
+    content:""; position:absolute; width:14px; height:14px; background:var(--char);
+    border-radius:50%; top:50%; transform:translateY(-50%);
+  }
+  .ticket-btn::before{ left:-7px; }
+  .ticket-btn::after{ right:-7px; }
+  .ticket-btn.alt{ background:transparent; color:var(--bone); border:1px solid var(--ash-soft); }
+  .ticket-btn.alt::before, .ticket-btn.alt::after{ background:var(--char); }
+  .ticket-btn.alt:hover{ border-color:var(--ember); color:var(--ember); box-shadow:none; background:transparent; }
+
+  /* ================= HEADER ================= */
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    padding:1.4rem 0; transition:background .35s ease, padding .35s ease, border-color .35s ease;
+    border-bottom:1px solid transparent;
+  }
+  header.scrolled{
+    background:rgba(11,9,8,.92); backdrop-filter:blur(10px);
+    padding:1rem 0; border-bottom-color:var(--ash);
+  }
+  .nav-row{ display:flex; align-items:center; justify-content:space-between; }
+  .brand{ display:flex; align-items:center; gap:.55rem; text-decoration:none; }
+  .brand svg{ width:22px; height:22px; }
+  .brand span{
+    font-family:var(--font-mono); font-weight:600; letter-spacing:.18em;
+    font-size:1rem; color:var(--bone);
+  }
+  nav.links{ display:flex; align-items:center; gap:2.4rem; }
+  nav.links a{
+    text-decoration:none; color:var(--smoke); font-size:.92rem; font-weight:500;
+    transition:color .2s ease; position:relative;
+  }
+  nav.links a:hover{ color:var(--bone); }
+  .nav-actions{ display:flex; align-items:center; gap:1.6rem; }
+  .nav-actions .ticket-btn{ padding:.75rem 1.6rem; font-size:.72rem; }
+
+  .burger{
+    display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:.4rem;
+  }
+  .burger span{ width:24px; height:2px; background:var(--bone); display:block; transition:.25s ease; }
+
+  /* ================= HERO ================= */
+  .hero{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; position:relative; padding-top:6rem; overflow:hidden;
+  }
+  .hero-bg{
+    position:absolute; inset:0; z-index:-1;
+    background-image:
+      linear-gradient(180deg, rgba(11,9,8,.55) 0%, rgba(11,9,8,.86) 55%, var(--char) 100%),
+      url('https://images.unsplash.com/photo-1614119068601-483274e9dcb7?q=80&w=406&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+    background-size:cover; background-position:center 70%;
+    filter:saturate(1.05);
+  }
+  .hero-content{ max-width:760px; padding:0 1.5rem; }
+  .hero-title{
+    font-size:clamp(4.2rem, 13vw, 8.5rem); line-height:.92; letter-spacing:-0.02em;
+    margin:1.4rem 0 1.2rem; color:var(--bone);
+  }
+  .hero-title em{ font-style:italic; color:var(--ember); font-weight:500; }
+  .hero-tagline{ font-size:1.15rem; color:var(--smoke); max-width:480px; margin:0 auto 2.4rem; }
+  .scroll-cue{
+    position:absolute; bottom:2.4rem; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:.6rem;
+    font-family:var(--font-mono); font-size:.68rem; letter-spacing:.2em; color:var(--smoke);
+  }
+  .scroll-cue .line{ width:1px; height:34px; background:linear-gradient(var(--ember), transparent); animation:scrollPulse 2s ease-in-out infinite; }
+  @keyframes scrollPulse{ 0%,100%{ opacity:.3; } 50%{ opacity:1; } }
+
+  /* ================= ABOUT ================= */
+  .about-grid{
+    display:grid; grid-template-columns:1.05fr .95fr; gap:5rem; align-items:center;
+  }
+  .about-copy .eyebrow{ margin-bottom:1.2rem; }
+  .about-copy h2{ font-size:2.5rem; line-height:1.15; margin-bottom:1.4rem; }
+  .about-copy p{ color:var(--smoke); margin-bottom:1.6rem; font-size:1.02rem; }
+  .house-rules{ list-style:none; display:flex; flex-direction:column; gap:1rem; margin-top:1.8rem; }
+  .house-rules li{
+    display:flex; gap:1rem; align-items:baseline; font-size:.92rem; color:var(--bone);
+    border-top:1px solid var(--ash); padding-top:1rem;
+  }
+  .house-rules li span.no{ font-family:var(--font-mono); color:var(--ember); font-size:.78rem; flex-shrink:0; }
+  .framed{ position:relative; }
+  .framed::before, .framed::after{
+    content:""; position:absolute; width:34px; height:34px;
+    border-top:2px solid var(--ember); border-left:2px solid var(--ember);
+  }
+  .framed::before{ top:-12px; left:-12px; }
+  .framed::after{ bottom:-12px; right:-12px; transform:rotate(180deg); }
+  .framed img{ width:100%; aspect-ratio:4/5; object-fit:cover; filter:saturate(1.05) contrast(1.05); }
+
+  /* ================= DISHES ================= */
+  .dish-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.8rem; }
+  .dish-card{
+    background:var(--char); border:1px solid var(--ash); border-radius:4px; padding:2.2rem 1.8rem;
+    transition:transform .35s ease, border-color .35s ease, box-shadow .35s ease;
+  }
+  .dish-card:hover{ transform:translateY(-8px); border-color:var(--ember); box-shadow:0 24px 50px rgba(255,90,31,.13); }
+  .dish-icon{
+    width:62px; height:62px; border:1px solid var(--ash-soft); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; margin-bottom:1.6rem;
+    color:var(--ember); transition:border-color .35s ease;
+  }
+  .dish-card:hover .dish-icon{ border-color:var(--ember); }
+  .dish-icon svg{ width:28px; height:28px; }
+  .dish-card h3{ font-size:1.28rem; margin-bottom:.6rem; }
+  .dish-card p{ color:var(--smoke); font-size:.92rem; margin-bottom:1.6rem; }
+  .dish-foot{ display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--ash); padding-top:1.1rem; }
+  .dish-foot .tag{ font-family:var(--font-mono); font-size:.68rem; letter-spacing:.12em; color:var(--smoke); text-transform:uppercase; }
+  .dish-foot .price{ font-family:var(--font-mono); color:var(--ember); font-weight:600; font-size:1rem; }
+
+  /* ================= MENU PREVIEW ================= */
+  .menu-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.8rem; }
+  .menu-card{
+    background:var(--soot); border:1px solid var(--ash); border-radius:3px; padding:2.4rem 1.9rem 2rem;
+    position:relative;
+  }
+  .menu-card::before{
+    content:""; position:absolute; top:-1px; left:1.4rem; right:1.4rem; height:1px;
+    background:repeating-linear-gradient(to right, var(--smoke) 0 6px, transparent 6px 12px);
+    opacity:.5;
+  }
+  .menu-stamp{
+    display:inline-block; font-family:var(--font-mono); font-size:.68rem; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--ember); border:1px dashed var(--ember);
+    padding:.4rem .9rem; transform:rotate(-2deg); margin-bottom:1.8rem;
+  }
+  .menu-row{ display:flex; align-items:baseline; gap:.6rem; padding:.85rem 0; }
+  .menu-row + .menu-row{ border-top:1px solid var(--ash); }
+  .menu-row .name{ font-size:.96rem; color:var(--bone); }
+  .menu-row .name small{ display:block; color:var(--smoke); font-size:.78rem; margin-top:.2rem; font-weight:400; }
+  .menu-row .leader{ flex:1; border-bottom:1px dotted var(--ash-soft); transform:translateY(-5px); min-width:12px; }
+  .menu-row .price{ font-family:var(--font-mono); color:var(--ember); font-size:.92rem; white-space:nowrap; }
+
+  /* ================= TESTIMONIALS ================= */
+  .test-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.8rem; }
+  .test-card{
+    background:var(--char); border:1px solid var(--ash); border-radius:4px; padding:2.4rem 2rem;
+    position:relative; overflow:hidden;
+  }
+  .test-card .quote-mark{
+    position:absolute; top:-1.4rem; right:.6rem; font-family:var(--font-display); font-size:7rem;
+    color:var(--ember); opacity:.08; line-height:1;
+  }
+  .flames{ display:flex; gap:.35rem; margin-bottom:1.3rem; }
+  .flames svg{ width:15px; height:15px; color:var(--ember); }
+  .test-card p.quote{ font-family:var(--font-display); font-style:italic; font-size:1.08rem; color:var(--bone); margin-bottom:1.6rem; }
+  .test-who{ display:flex; flex-direction:column; gap:.15rem; border-top:1px solid var(--ash); padding-top:1.1rem; }
+  .test-who .name{ font-weight:600; font-size:.92rem; }
+  .test-who .role{ font-family:var(--font-mono); font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--smoke); }
+
+  /* ================= GALLERY ================= */
+  .gallery-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); grid-auto-rows:230px; gap:1rem;
+  }
+  .gallery-tile{
+    position:relative; overflow:hidden; border-radius:3px; border:1px solid var(--ash);
+  }
+  .gallery-tile.tall{ grid-row:span 2; }
+  .gallery-tile img{ width:100%; height:100%; object-fit:cover; transition:transform .6s ease; }
+  .gallery-tile:hover img{ transform:scale(1.08); }
+  .gallery-tile .illustrated{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, var(--soot-2), var(--char));
+  }
+  .gallery-tile .illustrated svg{ width:38%; height:38%; color:var(--ember); opacity:.55; transition:transform .6s ease, opacity .4s ease; }
+  .gallery-tile:hover .illustrated svg{ transform:scale(1.12); opacity:.85; }
+  .gallery-cap{
+    position:absolute; left:0; right:0; bottom:0; padding:1.1rem 1.1rem .9rem;
+    background:linear-gradient(180deg, transparent, rgba(11,9,8,.92));
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.06em; color:var(--bone);
+    transform:translateY(6px); opacity:.85; transition:opacity .3s ease, transform .3s ease;
+  }
+  .gallery-tile:hover .gallery-cap{ opacity:1; transform:translateY(0); }
+
+  /* ================= CONTACT ================= */
+  .contact-grid{ display:grid; grid-template-columns:1fr 1fr; gap:5rem; align-items:start; }
+  .info-block{ display:flex; gap:1.1rem; margin-bottom:2.2rem; }
+  .info-block .ic{ width:40px; height:40px; border:1px solid var(--ash-soft); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ember); flex-shrink:0; }
+  .info-block .ic svg{ width:18px; height:18px; }
+  .info-block .label{ font-family:var(--font-mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:var(--smoke); margin-bottom:.4rem; }
+  .info-block .value{ color:var(--bone); font-size:.98rem; }
+  .info-block .value div{ margin-bottom:.15rem; }
+  .map-panel{
+    background:var(--char); border:1px solid var(--ash); border-radius:4px; aspect-ratio:1/1;
+    position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;
+  }
+  .map-panel svg{ width:100%; height:100%; }
+  .map-pin{ position:absolute; top:50%; left:50%; transform:translate(-50%,-110%); display:flex; flex-direction:column; align-items:center; }
+  .map-pin .dot{ width:14px; height:14px; background:var(--ember); border-radius:50%; box-shadow:0 0 0 6px rgba(255,90,31,.18), 0 0 24px rgba(255,90,31,.5); }
+  .map-pin .tag{ margin-top:.6rem; font-family:var(--font-mono); font-size:.66rem; letter-spacing:.1em; color:var(--bone); background:var(--soot); border:1px solid var(--ash); padding:.3rem .6rem; white-space:nowrap; }
+
+  /* ================= FOOTER ================= */
+  footer{ background:var(--char); border-top:1px solid var(--ash); padding:4.5rem 0 2rem; position:relative; z-index:2; }
+  .footer-top{ display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:3rem; padding-bottom:3rem; }
+  .footer-brand .brand{ margin-bottom:1rem; }
+  .footer-brand p{ color:var(--smoke); font-size:.92rem; max-width:280px; margin-bottom:1.5rem; }
+  .socials{ display:flex; gap:.8rem; }
+  .socials a{ width:36px; height:36px; border:1px solid var(--ash-soft); border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; color:var(--smoke); transition:.25s ease; }
+  .socials a:hover{ color:var(--ember); border-color:var(--ember); }
+  .socials svg{ width:16px; height:16px; }
+  .footer-col h4{ font-family:var(--font-mono); font-size:.74rem; letter-spacing:.16em; text-transform:uppercase; color:var(--bone); margin-bottom:1.2rem; }
+  .footer-col ul{ list-style:none; display:flex; flex-direction:column; gap:.7rem; }
+  .footer-col a{ text-decoration:none; color:var(--smoke); font-size:.92rem; transition:color .2s ease; }
+  .footer-col a:hover{ color:var(--ember); }
+  .footer-bottom{ display:flex; justify-content:space-between; align-items:center; padding-top:2rem; border-top:1px solid var(--ash); font-family:var(--font-mono); font-size:.72rem; color:var(--smoke); flex-wrap:wrap; gap:1rem; }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width:980px){
+    nav.links{ display:none; }
+    .burger{ display:flex; }
+    .about-grid, .contact-grid{ grid-template-columns:1fr; gap:3rem; }
+    .dish-grid, .menu-grid, .test-grid{ grid-template-columns:repeat(2,1fr); }
+    .gallery-grid{ grid-template-columns:repeat(2,1fr); }
+    .footer-top{ grid-template-columns:1fr 1fr; }
+    .footer-brand{ grid-column:1/-1; }
+  }
+  @media (max-width:980px){
+    nav.links.open{
+      display:flex; flex-direction:column; position:fixed; top:0; right:0; bottom:0; width:78%; max-width:320px;
+      background:var(--char-2); padding:6rem 2rem 2rem; gap:1.8rem; border-left:1px solid var(--ash); z-index:60;
+      align-items:flex-start;
+    }
+  }
+  @media (max-width:680px){
+    section{ padding:5rem 0; }
+    .section-head h2{ font-size:1.9rem; }
+    .dish-grid, .menu-grid, .test-grid, .gallery-grid{ grid-template-columns:1fr; }
+    .gallery-tile.tall{ grid-row:auto; }
+    .gallery-tile{ height:260px; }
+    .footer-top{ grid-template-columns:1fr; }
+    .hero-title{ font-size:clamp(3.2rem, 18vw, 5rem); }
+  }
+</style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to content</a>
+<div class="grain" aria-hidden="true"></div>
+<canvas id="emberCanvas" aria-hidden="true"></canvas>
+
+<header id="siteHeader">
+  <div class="container nav-row">
+    <a href="#home" class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z" stroke="#ff5a1f"/></svg>
+      <span>EMBER</span>
+    </a>
+    <nav class="links" id="navLinks">
+      <a href="#about">About</a>
+      <a href="#dishes">Dishes</a>
+      <a href="#menu">Menu</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <div class="nav-actions">
+      <a href="#contact" class="ticket-btn">Book a Table</a>
+      <button class="burger" id="burgerBtn" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <span class="eyebrow">CHARCOAL · FIRE · CRAFT</span>
+      <h1 class="hero-title">EMB<em>ER</em></h1>
+      <p class="hero-tagline">Fire is the first ingredient. Everything else is technique.</p>
+      <a href="#contact" class="ticket-btn">Book a Table</a>
+    </div>
+    <div class="scroll-cue"><span class="line"></span>SCROLL</div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="bg-char" id="about">
+    <div class="container about-grid">
+      <div class="about-copy reveal">
+        <span class="eyebrow">EST. 2014 — OPEN-FLAME KITCHEN</span>
+        <h2>We cook the way fire intended.</h2>
+        <p>Ember started as a single charcoal grill behind a butcher's shop — the kind of fire you light at dawn and never let die. Years later the grill is bigger and the dining room is quieter, but the rule hasn't changed: nothing reaches your table that hasn't first met the flame.</p>
+        <p>Our cooks read coals the way a sommelier reads a glass — by smell, by sound, by the way the smoke bends. We season early, we wait, and we serve only when the fire says it's ready. Not before.</p>
+        <ul class="house-rules">
+          <li><span class="no">No. 01</span> Live-fire only. No gas, ever.</li>
+          <li><span class="no">No. 02</span> Coals are split and lit fresh every service.</li>
+          <li><span class="no">No. 03</span> The counter seats six; the dining room seats sixty.</li>
+        </ul>
+      </div>
+      <div class="framed reveal">
+        <img src="https://images.unsplash.com/photo-1594489883219-010b0e5eeb9d?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Steak resting after coming off the charcoal grill" loading="lazy" />
+      </div>
+    </div>
+  </section>
+
+  <div class="container"><div class="divider"><span></span></div></div>
+
+  <!-- POPULAR DISHES -->
+  <section class="bg-char" id="dishes">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">TONIGHT'S SELECTION</span>
+        <h2>Popular Dishes</h2>
+        <p>Six plates our regulars order on repeat — each one finished within arm's reach of live coals.</p>
+      </div>
+      <div class="dish-grid">
+
+        <div class="dish-card reveal">
+          <img src="https://images.unsplash.com/photo-1679711246825-1f2bd51b16d0?q=80&w=771&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"  class="dish-img" alt="">
+           <h3>Smoked Rib-eye</h3>
+          <p>Smokey flavour , Meat, Tangy.</p>
+          <div class="dish-foot"><span class="tag">Main</span><span class="price">$58</span></div>
+        </div>
+
+        <div class="dish-card reveal">
+          <img src="https://plus.unsplash.com/premium_photo-1719530305720-6d38151dafac?q=80&w=871&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="dish-img" alt="">
+          <h3>Charred Octopus</h3>
+          <p>Confit potato, smoked paprika oil.</p>
+          <div class="dish-foot"><span class="tag">Starter</span><span class="price">$24</span></div>
+        </div>
+
+        <div class="dish-card reveal">
+         <img src="https://plus.unsplash.com/premium_photo-1694850980351-683bd8436024?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="dish-img" alt="">
+          <h3>Wood-Fired Mushroom Risotto</h3>
+          <p>Taleggio, crisp sage, charred shallot.</p>
+          <div class="dish-foot"><span class="tag">Main</span><span class="price">$26</span></div>
+        </div>
+
+        <div class="dish-card reveal">
+          <img src="https://images.unsplash.com/photo-1742455259385-654d727825f1?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="dish-img" alt="">
+          <h3>Ember-Roasted Half Chicken</h3>
+          <p>Burnt-honey glaze, charred lemon.</p>
+          <div class="dish-foot"><span class="tag">Main</span><span class="price">$32</span></div>
+        </div>
+
+        <div class="dish-card reveal">
+          <img src="https://plus.unsplash.com/premium_photo-1668616816697-dbff40de499c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fExpdmUtRmlyZSUyMExhbWIlMjBDaG9wc3xlbnwwfHwwfHx8MA%3D%3D" class="dish-img" alt="">
+          <h3>Live-Fire Lamb Chops</h3>
+          <p>Rosemary ash, pomegranate molasses.</p>
+          <div class="dish-foot"><span class="tag">Main</span><span class="price">$42</span></div>
+        </div>
+
+        <div class="dish-card reveal">
+          <img src="https://images.unsplash.com/photo-1681564334698-8c85a9b4b1f8?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="dish-img" alt="">
+          <h3>Burnt-Sugar Tiramisu</h3>
+          <p>Espresso ash, mascarpone, cocoa nib.</p>
+          <div class="dish-foot"><span class="tag">Dessert</span><span class="price">$14</span></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- MENU PREVIEW -->
+  <section class="bg-soot" id="menu">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">THE FULL TICKET</span>
+        <h2>Menu Preview</h2>
+        <p>A shorter cut of what's on offer. Ask your server about tonight's fire-side specials.</p>
+      </div>
+      <div class="menu-grid">
+
+        <div class="menu-card reveal">
+          <span class="menu-stamp">Starters</span>
+          <div class="menu-row"><span class="name">Charred Octopus<small>Confit potato, smoked paprika</small></span><span class="leader"></span><span class="price">24</span></div>
+          <div class="menu-row"><span class="name">Burnt Leek &amp; Ricotta Toast<small>Chili honey</small></span><span class="leader"></span><span class="price">14</span></div>
+          <div class="menu-row"><span class="name">Smoked Beef Tartare<small>Ember oil, rye crisp</small></span><span class="leader"></span><span class="price">19</span></div>
+          <div class="menu-row"><span class="name">Roasted Bone Marrow<small>Herb gremolata, grilled bread</small></span><span class="leader"></span><span class="price">18</span></div>
+        </div>
+
+        <div class="menu-card reveal">
+          <span class="menu-stamp">Main Course</span>
+          <div class="menu-row"><span class="name">Smoked Bone-In Ribeye<small>28-day aged, oak embers</small></span><span class="leader"></span><span class="price">58</span></div>
+          <div class="menu-row"><span class="name">Ember-Roasted Half Chicken<small>Burnt honey, charred lemon</small></span><span class="leader"></span><span class="price">32</span></div>
+          <div class="menu-row"><span class="name">Live-Fire Lamb Chops<small>Rosemary ash, pomegranate</small></span><span class="leader"></span><span class="price">42</span></div>
+          <div class="menu-row"><span class="name">Wood-Fired Mushroom Risotto<small>Taleggio, crisp sage</small></span><span class="leader"></span><span class="price">26</span></div>
+        </div>
+
+        <div class="menu-card reveal">
+          <span class="menu-stamp">Desserts</span>
+          <div class="menu-row"><span class="name">Burnt-Sugar Tiramisu<small>Espresso ash</small></span><span class="leader"></span><span class="price">14</span></div>
+          <div class="menu-row"><span class="name">Charred Pineapple<small>Brown-butter rum, vanilla ash</small></span><span class="leader"></span><span class="price">12</span></div>
+          <div class="menu-row"><span class="name">Dark Chocolate Ember Tart<small>Smoked salt, cocoa nib</small></span><span class="leader"></span><span class="price">13</span></div>
+          <div class="menu-row"><span class="name">Affogato<small>Espresso, charcoal wafer</small></span><span class="leader"></span><span class="price">9</span></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="bg-char" id="testimonials">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">GUEST NOTES</span>
+        <h2>Testimonials</h2>
+        <p>What people say after the plates are cleared.</p>
+      </div>
+      <div class="test-grid">
+
+        <div class="test-card reveal">
+          <span class="quote-mark">&rdquo;</span>
+          <div class="flames">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+          </div>
+          <p class="quote">Every dish tastes like it just left the fire — because it did. Best ribeye I've had in the city, full stop.</p>
+          <div class="test-who"><span class="name">Priya M.</span><span class="role">Regular Guest</span></div>
+        </div>
+
+        <div class="test-card reveal">
+          <span class="quote-mark">&rdquo;</span>
+          <div class="flames">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+          </div>
+          <p class="quote">The kind of restaurant you bring people to when you want them to remember the night, not just the meal.</p>
+          <div class="test-who"><span class="name">Daniel R.</span><span class="role">First-Time Diner</span></div>
+        </div>
+
+        <div class="test-card reveal">
+          <span class="quote-mark">&rdquo;</span>
+          <div class="flames">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+          </div>
+          <p class="quote">Service that matches the kitchen's confidence — quiet, precise, never rushed.</p>
+          <div class="test-who"><span class="name">Aanya K.</span><span class="role">Food Writer</span></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section class="bg-soot" id="gallery">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">FROM THE PASS</span>
+        <h2>Gallery</h2>
+        <p>A few frames from the kitchen and the counter.</p>
+      </div>
+      <div class="gallery-grid">
+
+        <div class="gallery-tile tall reveal">
+          <img src="https://images.unsplash.com/photo-1765036741062-1184a3834c7a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGNvYWwlMjBmb29kfGVufDB8fDB8fHww" alt="Charcoal embers glowing in the grill" loading="lazy" />
+          <div class="gallery-cap">Coals, lit at dawn</div>
+        </div>
+
+        <div class="gallery-tile reveal">
+          <img src="https://images.unsplash.com/photo-1630563775062-bbaf8ad3d73c?auto=format&fit=crop&w=700&q=75" alt="Pasta dish plated on a dark plate" loading="lazy" />
+          <div class="gallery-cap">Fresh from the pass</div>
+        </div>
+
+        <div class="gallery-tile reveal">
+          <img src="https://images.unsplash.com/photo-1558030089-02acba3c214e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fGdyaWxsfGVufDB8fDB8fHww" class="gallery-image" alt="">
+          <div class="gallery-cap">The grill never rests</div>
+        </div>
+
+        <div class="gallery-tile reveal">
+          <img src="https://images.unsplash.com/photo-1615937722923-67f6deaf2cc9?auto=format&fit=crop&w=700&q=75" alt="Close up of a fire-finished steak" loading="lazy" />
+          <div class="gallery-cap">28-day aged, fire-finished</div>
+        </div>
+
+        <div class="gallery-tile reveal">
+          <img src="https://images.unsplash.com/photo-1663100143193-bca3e76f81b6?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDQzfHx8ZW58MHx8fHx8" class="gallery-image" alt="">
+          <div class="gallery-cap">Dessert, the quiet finale</div>
+        </div>
+
+        <div class="gallery-tile reveal">
+          <img src="https://images.unsplash.com/photo-1776775451865-384d785eb96d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDJ8fHxlbnwwfHx8fHw%3D" class="gallery-image" alt="">
+          <div class="gallery-cap">Six seats, no menu needed</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="bg-char" id="contact">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">FIND THE FIRE</span>
+        <h2>Contact &amp; Reservations</h2>
+        <p>Walk-ins welcome at the counter. Tables of four or more, please reserve ahead.</p>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-info reveal">
+
+          <div class="info-block">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.4"/></svg></div>
+            <div>
+              <div class="label">Address</div>
+              <div class="value"><div>142 Foundry Lane, Bandra West</div><div>Mumbai, Maharashtra 400050</div></div>
+            </div>
+          </div>
+
+          <div class="info-block">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 4h3l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v3a2 2 0 0 1-2 2C10.5 20 4 13.5 4 6a2 2 0 0 1 2-2Z"/></svg></div>
+            <div>
+              <div class="label">Phone</div>
+              <div class="value"><div>+91 98765 43210</div></div>
+            </div>
+          </div>
+
+          <div class="info-block">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div>
+            <div>
+              <div class="label">Opening Hours</div>
+              <div class="value">
+                <div>Mon – Thu: 6:00 PM – 11:00 PM</div>
+                <div>Fri – Sat: 6:00 PM – 1:00 AM</div>
+                <div>Sun: 5:00 PM – 10:00 PM</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="map-panel reveal">
+          <svg viewBox="0 0 300 300" fill="none" stroke="#2c2620" stroke-width="1">
+            <line x1="0" y1="60" x2="300" y2="60"/><line x1="0" y1="130" x2="300" y2="130"/><line x1="0" y1="200" x2="300" y2="200"/>
+            <line x1="70" y1="0" x2="70" y2="300"/><line x1="150" y1="0" x2="150" y2="300"/><line x1="220" y1="0" x2="220" y2="300"/>
+            <line x1="0" y1="0" x2="300" y2="300" stroke="#352e27"/>
+          </svg>
+          <div class="map-pin">
+            <div class="dot"></div>
+            <div class="tag">EMBER — BANDRA WEST</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#home" class="brand">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ff5a1f" stroke-width="1.6"><path d="M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.8-2.6.3.6.9 1 1.6 1A1.8 1.8 0 0 0 12 6.6C12 5 11 3.6 12 2Z"/></svg>
+          <span>EMBER</span>
+        </a>
+        <p>Open-flame kitchen since 2014. Charcoal, craft, and a menu that never touches gas.</p>
+        <div class="socials">
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg></a>
+          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 9h2V6h-2a3 3 0 0 0-3 3v2H9v3h2v6h3v-6h2.2l.8-3H14V9Z"/></svg></a>
+          <a href="#" aria-label="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="#about">About</a></li>
+          <li><a href="#dishes">Popular Dishes</a></li>
+          <li><a href="#menu">Menu</a></li>
+          <li><a href="#gallery">Gallery</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Visit</h4>
+        <ul>
+          <li><a href="#contact">142 Foundry Lane, Bandra West</a></li>
+          <li><a href="tel:+919876543210">+91 98765 43210</a></li>
+          <li><a href="#contact">Reservations</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> Ember. All rights reserved.</span>
+      <span>Lit fresh, every service.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // year
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // header scroll state
+  const header = document.getElementById('siteHeader');
+  window.addEventListener('scroll', () => {
+    header.classList.toggle('scrolled', window.scrollY > 40);
+  });
+
+  // mobile nav
+  const burger = document.getElementById('burgerBtn');
+  const navLinks = document.getElementById('navLinks');
+  burger.addEventListener('click', () => {
+    const open = navLinks.classList.toggle('open');
+    burger.setAttribute('aria-expanded', open);
+  });
+  navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    burger.setAttribute('aria-expanded', false);
+  }));
+
+  // reveal on scroll
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const revealEls = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && !reduceMotion) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+    revealEls.forEach(el => io.observe(el));
+  } else {
+    revealEls.forEach(el => el.classList.add('in-view'));
+  }
+
+  // ember particle canvas
+  const canvas = document.getElementById('emberCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function makeParticle(){
+    return {
+      x: Math.random() * canvas.width,
+      y: canvas.height + Math.random() * 80,
+      r: Math.random() * 1.6 + 0.5,
+      speed: Math.random() * 0.5 + 0.18,
+      drift: (Math.random() - 0.5) * 0.35,
+      alpha: Math.random() * 0.5 + 0.25
+    };
+  }
+
+  const COUNT = 65;
+  const particles = [];
+  for (let i = 0; i < COUNT; i++){
+    const p = makeParticle();
+    p.y = Math.random() * canvas.height;
+    particles.push(p);
+  }
+
+  function drawParticle(p){
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 5);
+    grad.addColorStop(0, `rgba(255,140,70,${p.alpha})`);
+    grad.addColorStop(1, 'rgba(255,90,31,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function tick(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.y -= p.speed;
+      p.x += p.drift;
+      if (p.y < -10){
+        Object.assign(p, makeParticle());
+        p.y = canvas.height + 10;
+      }
+      drawParticle(p);
+    });
+    requestAnimationFrame(tick);
+  }
+
+  if (!reduceMotion) {
+    tick();
+  } else {
+    particles.forEach(drawParticle);
+  }
+</script>
+
+</body>
+</html>
